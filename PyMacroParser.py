@@ -38,33 +38,36 @@ class PyMacroParser:
         pass
 
     def dumpDict(self):
-        code_read = []
-        variable_defined = {}
-        for i in range(0, len(self.codes)):
-            code = self.codes[i].strip()
-            order, variable, value = split_code(code)
-            if order == PreTreamentOrder.DEFINE.value:
-                variable_defined[varialbe] = value
-            elif order == PreTreamentOrder.UNDEF.value:
-                variable_defined[variable] = None
-            elif order == PreTreamentOrder.IFDEF.value:
-                endif_pos = find_endif(order, codes[i + 1:])
-                else_pos = find_else(order, codes[i + 1:])
-                if variable_defined.has_key(variable):
-                    # 如果被定义了，那么直接找到与之对应的#endif
-                    pass
-                else:
-                    pass
+        pass
 
     def dump(self, f):
         pass
 
-# 递归处理#ifdef或者#ifndef下的内容
+
+# 递归处理内容
 def recursive_extract(codes):
     code_read = []
     variable_defined = {}
-
-
+    for i in range(0, len(codes)):
+        code = codes[i].strip()
+        order, variable, variable_value = split_code(code)
+        if order == PreTreamentOrder.DEFINE.value:
+            variable_defined[variable] = variable_value
+        elif order == PreTreamentOrder.UNDEF.value:
+            variable_defined[variable] = None
+        elif order == PreTreamentOrder.IFDEF.value or order == PreTreamentOrder.IFNDEF.value:
+            else_pos = find_else(order, codes[i + 1:])
+            end_pos = find_endif(order, codes[i + 1:])
+            if variable_defined.has_key(variable):
+                recursive_extract(codes[i + 1:else_pos - 1])
+            elif not variable_defined.has_key(variable):
+                if else_pos != None:
+                    recursive_extract(codes[else_pos + 1:end_pos - 1])
+                else:
+                    recursive_extract(codes[i + 1:end_pos - 1])
+        elif order == PreTreamentOrder.ENDIF.value:
+            continue
+    return variable_defined
 
 
 # 找到与order_if配对的#else, order_if可以是#ifdef也可以是#ifndef
@@ -198,9 +201,9 @@ def main():
     a = PyMacroParser()
     a.load("test_find_if_else_end.cpp")
     print a.codes
-    print "codes length: " + str(len(a.codes))
-    print "else pos: " + str(find_else(PreTreamentOrder.IFNDEF.value, a.codes))
-    print "end pos: " + str(find_endif(PreTreamentOrder.IFNDEF.value, a.codes))
+    variable_defined = recursive_extract(a.codes)
+    for variable in variable_defined.items():
+        print variable, variable_defined.get(variable)
 
 
 if __name__ == '__main__':
