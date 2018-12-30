@@ -14,7 +14,7 @@ class PreTreamentOrder(Enum):
 
 class PyMacroParser:
     codes = []
-    pre_define_macros = []
+    pre_define_macros = {}
 
     # 返回源代码去掉注释以及空行之后的代码，返回类型为list，代码的每一行作为list的item
     def load(self, f):
@@ -30,73 +30,129 @@ class PyMacroParser:
             print e
 
     def preDefine(self, s):
-        pre_define_s = s.split(";")
-        if pre_define_s:
-            pass
-        else:
-            self.pre_define_macros = []
-        pass
+        if self.pre_define_macros:
+            self.pre_define_macros.clear()
+        if len(s.split(";")) != 0:
+            for macro_name in s.split(";"):
+                self.pre_define_macros[macro_name] = None
 
     def dumpDict(self):
-        pass
+        macros_dict = recursive_extract(self.codes, self.pre_define_macros)
+        for macro_item in macros_dict.items():
+            pass
+        return macros_dict
 
     def dump(self, f):
         pass
 
+# 判断宏值所属的类型
+def choose_type(macro_value):
+    pass
+
+
+
+# 整数常量转化
+def change_Ingeger(origin_value):
+    pass
+def change_float(origin_value):
+    pass
+def change_char(origin_value):
+    pass
+def change_string(origin_value):
+    pass
+def change_union(origin_value):
+    pass
+
+# 布尔常量转换    
+def change_bool(origin_value):
+    if origin_value.lower() == "true":
+        return True
+    else:
+        return False
+
 
 # 递归处理内容
-def recursive_extract(codes):
-    code_read = []
-    variable_defined = {}
-    for i in range(0, len(codes)):
+def recursive_extract(codes, variable_defined):
+    # variable_defined = {}
+    i = 0
+    while i < len(codes):
         code = codes[i].strip()
         order, variable, variable_value = split_code(code)
         if order == PreTreamentOrder.DEFINE.value:
             variable_defined[variable] = variable_value
+            i += 1
         elif order == PreTreamentOrder.UNDEF.value:
-            variable_defined[variable] = None
-        elif order == PreTreamentOrder.IFDEF.value or order == PreTreamentOrder.IFNDEF.value:
-            else_pos = find_else(order, codes[i + 1:])
-            end_pos = find_endif(order, codes[i + 1:])
             if variable_defined.has_key(variable):
-                recursive_extract(codes[i + 1:else_pos - 1])
+                variable_defined.pop(variable)
+            i += 1
+        elif order == PreTreamentOrder.IFNDEF.value:
+            else_pos = find_else(order, codes[i:])
+            end_pos = find_endif(order, codes[i:])
+            if not variable_defined.has_key(variable):
+                if else_pos != None:
+                    recursive_extract(codes[i + 1:i + else_pos],
+                                      variable_defined)                    
+                else:
+                    recursive_extract(codes[i + 1:i + end_pos],
+                                      variable_defined)
+            elif variable_defined.has_key(variable):
+                if else_pos != None:
+                    recursive_extract(codes[i + else_pos:i + end_pos],
+                                      variable_defined)
+                # else:
+                #     recursive_extract(codes[i + 1:i + end_pos],
+                #                       variable_defined)
+            i += end_pos
+        elif order == PreTreamentOrder.IFDEF.value:
+            else_pos = find_else(order, codes[i:])
+            end_pos = find_endif(order, codes[i:])
+            if variable_defined.has_key(variable):
+                if else_pos != None:
+                    recursive_extract(codes[i + 1:i + else_pos],
+                                      variable_defined)                    
+                else:
+                    recursive_extract(codes[i + 1:i + end_pos],
+                                      variable_defined)
             elif not variable_defined.has_key(variable):
                 if else_pos != None:
-                    recursive_extract(codes[else_pos + 1:end_pos - 1])
+                    recursive_extract(codes[i + else_pos:i + end_pos],
+                                      variable_defined)
                 else:
-                    recursive_extract(codes[i + 1:end_pos - 1])
-        elif order == PreTreamentOrder.ENDIF.value:
-            continue
+                    recursive_extract(codes[i + 1:i + end_pos],
+                                      variable_defined)
+            i += end_pos
+        elif order == PreTreamentOrder.ENDIF.value or order == PreTreamentOrder.ELSE.value:
+            i += 1
+        
     return variable_defined
 
 
 # 找到与order_if配对的#else, order_if可以是#ifdef也可以是#ifndef
+# 返回的是#else在codes中的位置，没有则返回None
 def find_else(order_if, codes):
-    order_list = []
-    order_list.append(order_if)
     i = 1
-    while i < len(codes):
+    end_pos = find_endif(order_if, codes)
+    while i < len(codes[:end_pos]):
         code = codes[i]
-        order, variable, value = split_code(code)
+        order, variable, variable_value = split_code(code)
         if order == PreTreamentOrder.IFDEF.value or order == PreTreamentOrder.IFNDEF.value:
-            order_list.append(order)
+            i += find_endif(order, codes[i:end_pos])
+            continue
         elif order == PreTreamentOrder.ELSE.value:
-            if len(order_list) == 1:
-                return i
-            else:
-                order_list.pop()
+            return i
         i += 1
     return None
 
 
 # 找到与order_if配对的#endif, order_if可以是#ifdef也可以是#ifndef
+# 返回的是#endif在codes中的位置，没有则返回None
 def find_endif(order_if, codes):
     order_list = []
     order_list.append(order_if)
     i = 1
     while i < len(codes):
         code = codes[i]
-        order, variable, value = split_code(code)
+        order, variable, variable_value = split_code(code)
         if order == PreTreamentOrder.IFDEF.value or order == PreTreamentOrder.IFNDEF.value:
             order_list.append(order)
         elif order == PreTreamentOrder.ENDIF.value:
@@ -112,7 +168,7 @@ def find_endif(order_if, codes):
 def split_code(code):
     code = code.strip()
     if len(code.split()) == 1:
-        return code.split()[0], None, None
+        return code.split()[0].strip(), None, None
     elif len(code.split()) == 2:
         order = code.split()[0].strip()
         variable = code.split()[1].strip()
@@ -120,7 +176,7 @@ def split_code(code):
     else:
         order = code.split()[0].strip()
         variable = code.split()[1].strip()
-        value = "".join(code.split()[2:])
+        value = " ".join(code.split()[2:])
         return order, variable, value
 
 
@@ -199,12 +255,14 @@ def test_example():
 
 def main():
     a = PyMacroParser()
-    a.load("test_find_if_else_end.cpp")
-    print a.codes
-    variable_defined = recursive_extract(a.codes)
-    for variable in variable_defined.items():
-        print variable, variable_defined.get(variable)
-
+    a.load("a.cpp")
+    # a.preDefine("MC1;MC2")
+    variable_defined = recursive_extract(a.codes, a.pre_define_macros)
+    for item in variable_defined.items():
+        print item
+    # a.load("testFindIfElseEnd.cpp")
+    # print find_else(PreTreamentOrder.IFDEF.value, a.codes)
+    # print find_endif(PreTreamentOrder.IFDEF.value, a.codes)
 
 if __name__ == '__main__':
     main()
