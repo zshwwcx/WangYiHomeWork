@@ -1,7 +1,5 @@
 # coding=utf-8
 
-import  time
-
 
 # 判读是不是聚合
 def main():
