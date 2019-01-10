@@ -23,14 +23,15 @@
 
 
 #else
-
 #define data1 1.0f  /* this is float
 may be changed
 */
 #define data2 2
-#define date3  false
-#define data4 "this is a data"
-
+#   define date3 false
+#   define data4 "this is a data"
+#define A "/*...*/"
+//#define a {"\x66\\',,\"\x64 \",,\n\r,,,,\t\x67,,,\x68\\\\"}
+//#define tu7 "nice/*not comment ..\x00//*/" " /*///*/*/*/ comments !!!\""
 
 #ifdef MC2
 
@@ -41,8 +42,11 @@ may be changed
 #else
 
 #define data5 'D'
-#define data6 {1, 6}
-
+# define data6 {1, 6, {" "}, "  ", "this    is\n data"}
+#define data9 10
+ #define data10 "ABC" "DEF"
+//#define tu7 "nice/*not comment ..\x00//*/" " /*///*/*/*/ \t comments !!!\""
+//#define asssss {{"{","}"," "," "},"\n\t\'\\\\",'\n','\x22', '\14',  {"/*//*/","{}",'{','}'},",,,\n\t,,,}{,{}","sad" "asd\t","sadsa\t\v\b\'\"d" "\\\\\""}
 #endif //end MC2
 
 #endif //MC1
